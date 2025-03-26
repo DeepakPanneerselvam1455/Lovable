@@ -3,7 +3,7 @@ import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { MapPin, Bed, Bath, Home, Calendar, Check } from 'lucide-react';
+import { MapPin, Bed, Bath, Home, Calendar, Check, User } from 'lucide-react';
 import Header from '@/components/Header';
 import { properties } from '@/data/properties';
 

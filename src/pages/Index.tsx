@@ -3,7 +3,7 @@ import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Search, MapPin, Bed, Bath, Home } from 'lucide-react';
+import { Search, MapPin, Bed, Bath, Home, User } from 'lucide-react';
 import PropertyCard from '@/components/PropertyCard';
 import Header from '@/components/Header';
 import { properties } from '@/data/properties';
