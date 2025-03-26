@@ -1,244 +1,157 @@
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Search, MapPin, Bed, Bath, Home } from 'lucide-react';
+import PropertyCard from '@/components/PropertyCard';
 import Header from '@/components/Header';
-import SudokuGrid from '@/components/SudokuGrid';
-import NumberPad from '@/components/NumberPad';
-import ControlPanel from '@/components/ControlPanel';
-import { copyGrid, solveSudoku, getHint, isValidPlacement, isValidGrid } from '@/utils/sudokuSolver';
-import { generatePuzzle, createEmptyGrid } from '@/utils/sudokuGenerator';
-import { Toaster } from '@/components/ui/sonner';
-import { toast } from 'sonner';
+import { properties } from '@/data/properties';
 
-const Index = () => {
-  // Game state
-  const [difficulty, setDifficulty] = useState<'easy' | 'medium' | 'hard'>('easy');
-  const [grid, setGrid] = useState<number[][]>(createEmptyGrid());
-  const [originalGrid, setOriginalGrid] = useState<number[][]>(createEmptyGrid());
-  const [solution, setSolution] = useState<number[][]>(createEmptyGrid());
-  const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
-  const [hintCell, setHintCell] = useState<[number, number] | null>(null);
-  const [invalidCells, setInvalidCells] = useState<Array<[number, number]>>([]);
-  
-  // Initialize a new game on component mount
-  useEffect(() => {
-    startNewGame(difficulty);
-  }, []);
-  
-  // Clear hint cell after a delay
-  useEffect(() => {
-    if (hintCell) {
-      const timer = setTimeout(() => {
-        setHintCell(null);
-      }, 2000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, [hintCell]);
-  
-  // Handle cell value change
-  const handleCellChange = (row: number, col: number, value: number) => {
-    // If it's an original cell, don't allow changes
-    if (originalGrid[row][col] !== 0) return;
-    
-    // Create a new grid with the updated value
-    const newGrid = copyGrid(grid);
-    newGrid[row][col] = value;
-    
-    // Check if the placement is valid
-    if (value !== 0 && !isValidPlacement(grid, row, col, value)) {
-      // Mark the cell as invalid
-      setInvalidCells(prev => [...prev, [row, col]]);
-    } else {
-      // Remove the cell from invalid cells if it was invalid before
-      setInvalidCells(prev => prev.filter(([r, c]) => !(r === row && c === col)));
-    }
-    
-    setGrid(newGrid);
-    
-    // Check if the puzzle is solved
-    if (value !== 0 && isPuzzleSolved(newGrid)) {
-      toast.success('Congratulations! You solved the puzzle!', {
-        duration: 3000,
-      });
-    }
-  };
-  
-  // Check if the puzzle is solved
-  const isPuzzleSolved = (currentGrid: number[][]) => {
-    // Check if the grid is full (no zeros)
-    for (let row = 0; row < 9; row++) {
-      for (let col = 0; col < 9; col++) {
-        if (currentGrid[row][col] === 0) return false;
-      }
-    }
-    
-    // Check if the grid is valid
-    return isValidGrid(currentGrid);
-  };
-  
-  // Handle number pad button click
-  const handleNumberClick = (num: number) => {
-    if (selectedCell) {
-      const [row, col] = selectedCell;
-      handleCellChange(row, col, num);
-    }
-  };
-  
-  // Handle erase button click
-  const handleEraseClick = () => {
-    if (selectedCell) {
-      const [row, col] = selectedCell;
-      handleCellChange(row, col, 0);
-    }
-  };
-  
-  // Solve the puzzle
-  const handleSolve = () => {
-    const solutionGrid = copyGrid(grid);
-    
-    if (solveSudoku(solutionGrid)) {
-      setGrid(solutionGrid);
-      toast.success('Puzzle solved!', {
-        duration: 3000,
-      });
-    } else {
-      toast.error('This puzzle cannot be solved. Check for errors.', {
-        duration: 3000,
-      });
-    }
-  };
-  
-  // Get a hint
-  const handleHint = () => {
-    // If the puzzle is already solved, return
-    if (isPuzzleSolved(grid)) {
-      toast('The puzzle is already solved!', {
-        duration: 3000,
-      });
-      return;
-    }
-    
-    // Create a temporary solution grid if needed
-    let solGrid = solution;
-    if (solGrid.some(row => row.some(cell => cell === 0))) {
-      solGrid = copyGrid(grid);
-      if (!solveSudoku(solGrid)) {
-        toast.error('Cannot provide a hint. The current puzzle has no solution.', {
-          duration: 3000,
-        });
-        return;
-      }
-      setSolution(solGrid);
-    }
-    
-    // Get a hint cell and value
-    const hint = getHint(grid, solGrid);
-    if (hint) {
-      const [row, col, value] = hint;
-      
-      // Update the grid with the hint
-      const newGrid = copyGrid(grid);
-      newGrid[row][col] = value;
-      setGrid(newGrid);
-      
-      // Set the hint cell to highlight it
-      setHintCell([row, col]);
-      
-      // Remove from invalid cells if it was there
-      setInvalidCells(prev => prev.filter(([r, c]) => !(r === row && c === col)));
-      
-      // Check if the puzzle is solved with this hint
-      if (isPuzzleSolved(newGrid)) {
-        toast.success('Congratulations! The puzzle is solved!', {
-          duration: 3000,
-        });
-      }
-    } else {
-      toast('No more hints needed. The puzzle is complete!', {
-        duration: 3000,
-      });
-    }
-  };
-  
-  // Reset the puzzle to its original state
-  const handleReset = () => {
-    setGrid(copyGrid(originalGrid));
-    setInvalidCells([]);
-    setHintCell(null);
-    toast('Puzzle reset to the initial state', {
-      duration: 2000,
-    });
-  };
-  
-  // Start a new game
-  const handleNewGame = () => {
-    startNewGame(difficulty);
-    toast(`New ${difficulty} puzzle generated`, {
-      duration: 2000,
-    });
-  };
-  
-  // Generate a new puzzle with the given difficulty
-  const startNewGame = (diff: 'easy' | 'medium' | 'hard') => {
-    const { puzzle, solution } = generatePuzzle(diff);
-    setGrid(copyGrid(puzzle));
-    setOriginalGrid(copyGrid(puzzle));
-    setSolution(solution);
-    setInvalidCells([]);
-    setHintCell(null);
-    setSelectedCell(null);
-  };
-  
-  // Change the difficulty
-  const handleChangeDifficulty = (diff: 'easy' | 'medium' | 'hard') => {
-    if (diff !== difficulty) {
-      setDifficulty(diff);
-      startNewGame(diff);
-      toast(`Difficulty changed to ${diff}`, {
-        duration: 2000,
-      });
-    }
-  };
-
+const HomePage = () => {
   return (
-    <div className="min-h-screen flex flex-col bg-gradient-to-b from-blue-50 to-white">
-      <Toaster position="top-center" closeButton />
-      
+    <div className="flex flex-col min-h-screen">
       <Header />
       
-      <main className="flex-1 container max-w-3xl mx-auto p-4 pb-16">
-        <div className="w-full max-w-md mx-auto">
-          <SudokuGrid 
-            grid={grid} 
-            originalGrid={originalGrid}
-            onCellChange={handleCellChange}
-            hintCell={hintCell}
-            invalidCells={invalidCells}
-          />
-          
-          <NumberPad 
-            onNumberClick={handleNumberClick}
-            onEraseClick={handleEraseClick}
-            selectedCell={selectedCell}
-            originalGrid={originalGrid}
-          />
-          
-          <ControlPanel 
-            onSolve={handleSolve}
-            onHint={handleHint}
-            onReset={handleReset}
-            onNewGame={handleNewGame}
-            onChangeDifficulty={handleChangeDifficulty}
-            currentDifficulty={difficulty}
-          />
+      {/* Hero Section */}
+      <section className="relative py-20 bg-gradient-to-r from-primary/10 to-primary/5">
+        <div className="container max-w-7xl mx-auto px-4">
+          <div className="max-w-2xl">
+            <h1 className="text-4xl font-bold tracking-tight sm:text-5xl mb-6 animate-fade-in">
+              Find Your Dream Home
+            </h1>
+            <p className="text-lg text-muted-foreground mb-8 animate-fade-in">
+              Discover thousands of properties for rent in your area. From cozy apartments to spacious houses, we've got you covered.
+            </p>
+            
+            <div className="flex flex-col sm:flex-row gap-4 p-4 bg-background rounded-lg shadow-lg animate-fade-in">
+              <div className="flex-1">
+                <Input placeholder="Location" className="w-full" />
+              </div>
+              <div className="flex-1">
+                <Input placeholder="Price range" className="w-full" />
+              </div>
+              <Button className="flex-shrink-0">
+                <Search className="w-4 h-4 mr-2" />
+                Search
+              </Button>
+            </div>
+          </div>
         </div>
-      </main>
+      </section>
       
-      <footer className="py-4 text-center text-sm text-muted-foreground">
-        <p>A beautiful Sudoku solver created with love</p>
+      {/* Featured Properties */}
+      <section className="py-16">
+        <div className="container max-w-7xl mx-auto px-4">
+          <div className="flex justify-between items-center mb-8">
+            <h2 className="text-2xl font-semibold tracking-tight">Featured Properties</h2>
+            <Button variant="outline">View All</Button>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {properties.slice(0, 6).map((property) => (
+              <PropertyCard key={property.id} property={property} />
+            ))}
+          </div>
+        </div>
+      </section>
+      
+      {/* Why Choose Us */}
+      <section className="py-16 bg-muted/50">
+        <div className="container max-w-7xl mx-auto px-4">
+          <h2 className="text-2xl font-semibold tracking-tight text-center mb-12">Why Choose HomeHaven</h2>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Search className="w-5 h-5 text-primary" />
+                  Easy Search
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Find your perfect property with our intuitive search tools. Filter by location, price, and amenities.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Home className="w-5 h-5 text-primary" />
+                  Verified Listings
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  All our properties are verified by our team to ensure quality and accuracy of information.
+                </p>
+              </CardContent>
+            </Card>
+            
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <User className="w-5 h-5 text-primary" />
+                  Dedicated Support
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  Our team of experts is always ready to help you with any questions or concerns.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+      
+      {/* Footer */}
+      <footer className="mt-auto bg-background border-t py-8">
+        <div className="container max-w-7xl mx-auto px-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div>
+              <div className="flex items-center gap-2 mb-4">
+                <Home className="w-5 h-5 text-primary" />
+                <h3 className="font-semibold">HomeHaven</h3>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Your trusted partner in finding the perfect rental property.
+              </p>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-4">Quick Links</h4>
+              <ul className="space-y-2 text-sm">
+                <li><a href="/" className="text-muted-foreground hover:text-foreground">Home</a></li>
+                <li><a href="/properties" className="text-muted-foreground hover:text-foreground">Properties</a></li>
+                <li><a href="/about" className="text-muted-foreground hover:text-foreground">About Us</a></li>
+                <li><a href="/contact" className="text-muted-foreground hover:text-foreground">Contact</a></li>
+              </ul>
+            </div>
+            
+            <div>
+              <h4 className="font-medium mb-4">Contact</h4>
+              <p className="text-sm text-muted-foreground mb-2">
+                123 Main Street, New York, NY 10001
+              </p>
+              <p className="text-sm text-muted-foreground mb-2">
+                info@homehaven.com
+              </p>
+              <p className="text-sm text-muted-foreground">
+                +1 (123) 456-7890
+              </p>
+            </div>
+          </div>
+          
+          <div className="border-t mt-8 pt-8 text-center text-sm text-muted-foreground">
+            <p>&copy; {new Date().getFullYear()} HomeHaven. All rights reserved.</p>
+          </div>
+        </div>
       </footer>
     </div>
   );
 };
 
-export default Index;
+export default HomePage;
